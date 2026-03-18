@@ -27,6 +27,8 @@
 | **Start Command** | `python bot.py` |
 | **Instance Type** | **Free** |
 
+В репозитории есть файл **`.python-version`** (`3.12.8`) — так бот не собирается на **Python 3.14** по умолчанию (меньше сюрпризов с asyncio). Если Render всё ещё берёт 3.14, в **Environment** добавь **`PYTHON_VERSION`** = `3.12.8`.
+
 ---
 
 ## 3. Переменные окружения
@@ -39,6 +41,11 @@
 | `GITHUB_TOKEN` | GitHub Personal Access Token |
 | `GITHUB_REPO` | Репозиторий для контекста, например `bvjfba-png/viktor-context` |
 | `ALLOWED_USER_ID` | Твой Telegram ID (число, например `378494233`) |
+| `GROQ_API_KEY` | **Голосовые бесплатно:** ключ с [console.groq.com](https://console.groq.com/keys) (регистрация бесплатна, лимиты щедрые, Whisper через API) |
+| `OPENAI_API_KEY` | Альтернатива для голосовых — платный Whisper OpenAI, если не хочешь Groq |
+| `WHISPER_LANGUAGE` | Опционально: `ru`, по умолчанию русский |
+
+Если заданы оба ключа, сначала используется **Groq**. Без `GROQ_API_KEY` и без `OPENAI_API_KEY` текст и фото работают; голосовые — только после добавления одного из ключей.
 
 Значения бери из своего локального `.env`.
 
