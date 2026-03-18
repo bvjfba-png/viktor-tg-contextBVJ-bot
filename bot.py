@@ -1,10 +1,12 @@
 import os
 import logging
 import base64
-import requests as req
+import threading
+from http.server import HTTPServer, BaseHTTPRequestHandler
 from datetime import datetime
 from telegram import Update
 from telegram.ext import Application, MessageHandler, CommandHandler, filters, ContextTypes
+import requests as req
 from github import Github, GithubException
 
 logging.basicConfig(
@@ -12,6 +14,9 @@ logging.basicConfig(
     level=logging.INFO
 )
 logger = logging.getLogger(__name__)
+# Не писать в логи полные URL к Telegram (там виден токен)
+logging.getLogger("httpx").setLevel(logging.WARNING)
+logging.getLogger("httpcore").setLevel(logging.WARNING)
 
 # ── конфиг из переменных окружения ────────────────────────────────────────────
 TELEGRAM_TOKEN  = os.environ["TELEGRAM_TOKEN"]
@@ -133,9 +138,30 @@ async def handle_photo(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
         logger.error(e)
         await update.message.reply_text(f"❌ Ошибка: {e}")
 
-# ── запуск ────────────────────────────────────────────────────────────────────
+# ── health-check для Render (Web Service должен слушать PORT) ──────────────────
 
 def main() -> None:
+    # Render Web Service: порт должен быть открыт ДО долгих операций, иначе
+    # деплой висит на «No open ports detected».
+    port_str = os.environ.get("PORT")
+    if port_str:
+        port = int(port_str)
+
+        class Handler(BaseHTTPRequestHandler):
+            def do_GET(self):
+                self.send_response(200)
+                self.end_headers()
+                self.wfile.write(b"ok")
+
+            def log_message(self, *args):
+                pass
+
+        httpd = HTTPServer(("0.0.0.0", port), Handler)
+        threading.Thread(target=httpd.serve_forever, daemon=True).start()
+        logger.info("Health server listening on 0.0.0.0:%s (Render)", port)
+    else:
+        logger.info("PORT not set — health server skipped (локальный запуск)")
+
     app = Application.builder().token(TELEGRAM_TOKEN).build()
     app.add_handler(CommandHandler("start", cmd_start))
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_text))
